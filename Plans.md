@@ -12,7 +12,7 @@ Purpose: PlatformIO 개발환경, 포맷/정적검사 baseline, 호스트 테스
 
 | Task | 内容 | DoD | Depends | Status |
 |------|------|-----|---------|--------|
-| 0.1 | `[Setup]` `[lane:gate]` `[tdd:skip:scaffold]` git init, `.gitignore`, `CLAUDE.md`, `platformio.ini` (env `esp32c3`: espressif32/arduino, board esp32-c3-devkitm-1, USB CDC on boot, libs NimBLE-Arduino ^2.5.1 + U8g2 ^2.36.18 pinned; env `native`: Unity), `.clang-format`, skeleton `src/main.cpp`, `lib/core/` | `pio run -e esp32c3` exit 0 AND `pio test -e native` exit 0 (placeholder test) AND `clang-format --dry-run --Werror` on project sources exit 0 | - | cc:TODO |
+| 0.1 | `[Setup]` `[lane:gate]` `[tdd:skip:scaffold]` git init, `.gitignore`, `CLAUDE.md`, `platformio.ini` (env `esp32c3`: espressif32/arduino, board esp32-c3-devkitm-1, USB CDC on boot, libs NimBLE-Arduino ^2.5.1 + U8g2 ^2.36.18 pinned; env `native`: Unity), `.clang-format`, skeleton `src/main.cpp`, `lib/core/` | `pio run -e esp32c3` exit 0 AND `pio test -e native` exit 0 (placeholder test) AND `clang-format --dry-run --Werror` on project sources exit 0 | - | cc:完了 [3934c98] |
 
 ## Phase 1: Core logic (host-tested)
 
@@ -20,10 +20,10 @@ Purpose: 하드웨어 무관 로직을 TDD로 확정 (spec §4.2, §4.3, §4.4, 
 
 | Task | 内容 | DoD | Depends | Status |
 |------|------|-----|---------|--------|
-| 1.1 | `[Feature]` `[lane:gate]` `[tdd:required]` `IntervalCycle`: 1→5→8→1 min cycle, index↔minutes, sanitize stored index (invalid → 1 min) | native tests cover cycle wrap, sanitize invalid/out-of-range; `pio test -e native` PASS | 0.1 | cc:TODO |
-| 1.2 | `[Feature]` `[lane:gate]` `[tdd:required]` `Countdown` state machine (millis-injected): runs only while connected, resets to full on connect / interval change / after fire, reports `fired` exactly once per expiry, millis() wraparound safe | native tests cover: pause when disconnected, reset on reconnect, reset on interval change, single fire + auto restart, 32-bit wrap; PASS | 0.1 | cc:TODO |
-| 1.3 | `[Feature]` `[lane:gate]` `[tdd:required]` `Debouncer` (≥30 ms, press-edge event, active-low) | native tests cover bounce rejection, one event per press, long hold → single event; PASS | 0.1 | cc:TODO |
-| 1.4 | `[Feature]` `[lane:gate]` `[tdd:required]` view helpers: remaining fraction → pie sweep (12 o'clock, clockwise shrink), `M:SS` formatting (ceil seconds), interval label | native tests cover 100%/50%/0% sweep, `8:00`,`0:59`,`0:00` formatting; PASS | 0.1 | cc:TODO |
+| 1.1 | `[Feature]` `[lane:gate]` `[tdd:required]` `IntervalCycle`: 1→5→8→1 min cycle, index↔minutes, sanitize stored index (invalid → 1 min) | native tests cover cycle wrap, sanitize invalid/out-of-range; `pio test -e native` PASS | 0.1 | cc:完了 [3934c98] |
+| 1.2 | `[Feature]` `[lane:gate]` `[tdd:required]` `Countdown` state machine (millis-injected): runs only while connected, resets to full on connect / interval change / after fire, reports `fired` exactly once per expiry, millis() wraparound safe | native tests cover: pause when disconnected, reset on reconnect, reset on interval change, single fire + auto restart, 32-bit wrap; PASS | 0.1 | cc:完了 [3934c98] |
+| 1.3 | `[Feature]` `[lane:gate]` `[tdd:required]` `Debouncer` (≥30 ms, press-edge event, active-low) | native tests cover bounce rejection, one event per press, long hold → single event; PASS | 0.1 | cc:完了 [3934c98] |
+| 1.4 | `[Feature]` `[lane:gate]` `[tdd:required]` view helpers: remaining fraction → pie sweep (12 o'clock, clockwise shrink), `M:SS` formatting (ceil seconds), interval label | native tests cover 100%/50%/0% sweep, `8:00`,`0:59`,`0:00` formatting; PASS | 0.1 | cc:完了 [3934c98] |
 
 ## Phase 2: Firmware modules + integration
 
@@ -31,10 +31,10 @@ Purpose: BLE HID, OLED 렌더링, NVS, 메인 루프 결합
 
 | Task | 内容 | DoD | Depends | Status |
 |------|------|-----|---------|--------|
-| 2.1 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `BleKeyboard` on NimBLE-Arduino 2.x: HID keyboard report map, name `PCCaffeine`, bonding, re-advertise on disconnect, `isConnected()`, `tapLeftShift()` (press ~50 ms → release) | `pio run -e esp32c3` exit 0; code review shows only Left Shift modifier report is ever sent | 0.1 | cc:TODO |
-| 2.2 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `Screen` renderer with U8g2 72x40 (left pie, right BLE state / `M:SS` / `[Nm]`, waiting state, invert flash on fire) using 1.4 helpers | `pio run -e esp32c3` exit 0 | 1.4 | cc:TODO |
-| 2.3 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `Settings` NVS (Preferences) load/save interval index via `IntervalCycle::sanitize` | `pio run -e esp32c3` exit 0 | 1.1 | cc:TODO |
-| 2.4 | `[Feature]` `[lane:gate]` `[tdd:skip:integration-on-device]` `main.cpp` integration: button→cycle+save+reset, connection→countdown, fire→tapLeftShift+LED+invert, serial log of state changes | `pio run -e esp32c3` exit 0; `pio test -e native` PASS; `pio check -e esp32c3` no high-severity defects in `src/` `lib/` | 1.1, 1.2, 1.3, 2.1, 2.2, 2.3 | cc:TODO |
+| 2.1 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `BleKeyboard` on NimBLE-Arduino 2.x: HID keyboard report map, name `PCCaffeine`, bonding, re-advertise on disconnect, `isConnected()`, `tapLeftShift()` (press ~50 ms → release) | `pio run -e esp32c3` exit 0; code review shows only Left Shift modifier report is ever sent | 0.1 | cc:完了 [3934c98] |
+| 2.2 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `Screen` renderer with U8g2 72x40 (left pie, right BLE state / `M:SS` / `[Nm]`, waiting state, invert flash on fire) using 1.4 helpers | `pio run -e esp32c3` exit 0 | 1.4 | cc:完了 [3934c98] |
+| 2.3 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `Settings` NVS (Preferences) load/save interval index via `IntervalCycle::sanitize` | `pio run -e esp32c3` exit 0 | 1.1 | cc:完了 [3934c98] |
+| 2.4 | `[Feature]` `[lane:gate]` `[tdd:skip:integration-on-device]` `main.cpp` integration: button→cycle+save+reset, connection→countdown, fire→tapLeftShift+LED+invert, serial log of state changes | `pio run -e esp32c3` exit 0; `pio test -e native` PASS; `pio check -e esp32c3` no high-severity defects in `src/` `lib/` | 1.1, 1.2, 1.3, 2.1, 2.2, 2.3 | cc:完了 [3934c98] |
 
 ## Phase 3: On-device verification (보드 연결 필요 — 사용자 노티)
 
