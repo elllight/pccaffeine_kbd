@@ -1,0 +1,8 @@
+{
+  "name": "pccaffeine_kbd",
+  "version": "0.1.0",
+  "description": "Anti-screensaver HID keyboard firmware (PlatformIO, 0.42in OLED)",
+  "skills": [
+    "./skills/"
+  ]
+}

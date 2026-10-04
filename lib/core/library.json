@@ -1,0 +1,7 @@
+{
+  "name": "core",
+  "version": "0.1.0",
+  "description": "Hardware-independent logic for PCCaffeine KBD (host-testable)",
+  "frameworks": "*",
+  "platforms": "*"
+}
