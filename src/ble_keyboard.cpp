@@ -4,6 +4,8 @@
 #include <NimBLEDevice.h>
 #include <NimBLEHIDDevice.h>
 
+#include <atomic>
+
 namespace ble_keyboard {
 
 namespace {
@@ -40,14 +42,40 @@ const uint8_t kReportMap[] = {
     0xC0,             // End Collection
 };
 
-NimBLEServer* server = nullptr;
 NimBLEHIDDevice* hid = nullptr;
 NimBLECharacteristic* input = nullptr;
+
+// Handle of the encrypted (paired) host link. Written from the NimBLE host task,
+// read from loop(). A raw GAP link is not enough: before pairing completes the
+// host has not subscribed to the input report and notify() is silently dropped.
+std::atomic<uint16_t> secureConn{BLE_HS_CONN_HANDLE_NONE};
+
+class ServerCallbacks : public NimBLEServerCallbacks {
+  void onConnect(NimBLEServer*, NimBLEConnInfo& info) override {
+    Serial.printf("[ble] link up (handle=%u), waiting for pairing\n", info.getConnHandle());
+  }
+
+  void onAuthenticationComplete(NimBLEConnInfo& info) override {
+    if (info.isEncrypted()) {
+      secureConn = info.getConnHandle();
+    } else {
+      Serial.printf("[ble] pairing failed (handle=%u)\n", info.getConnHandle());
+    }
+  }
+
+  void onDisconnect(NimBLEServer*, NimBLEConnInfo& info, int reason) override {
+    uint16_t handle = info.getConnHandle();
+    secureConn.compare_exchange_strong(handle, BLE_HS_CONN_HANDLE_NONE);
+    Serial.printf("[ble] link down (reason=0x%x)\n", reason);
+  }
+};
+
+ServerCallbacks serverCallbacks;
 
 void sendReport(uint8_t modifiers) {
   uint8_t report[8] = {modifiers, 0, 0, 0, 0, 0, 0, 0};
   input->setValue(report, sizeof(report));
-  input->notify();
+  if (!input->notify(secureConn.load())) Serial.println("[ble] notify failed");
 }
 
 }  // namespace
@@ -57,7 +85,8 @@ void begin(const char* deviceName) {
   NimBLEDevice::setSecurityAuth(true, false, true);  // bonding, no MITM, secure connections
   NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
 
-  server = NimBLEDevice::createServer();
+  NimBLEServer* server = NimBLEDevice::createServer();
+  server->setCallbacks(&serverCallbacks);
   server->advertiseOnDisconnect(true);
 
   hid = new NimBLEHIDDevice(server);
@@ -77,7 +106,7 @@ void begin(const char* deviceName) {
 }
 
 bool isConnected() {
-  return server != nullptr && server->getConnectedCount() > 0;
+  return secureConn.load() != BLE_HS_CONN_HANDLE_NONE;
 }
 
 void tapLeftShift(uint32_t holdMs) {

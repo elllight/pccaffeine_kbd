@@ -1,5 +1,6 @@
 #include "settings.h"
 
+#include <Arduino.h>
 #include <Preferences.h>
 
 #include "interval_cycle.h"
@@ -21,7 +22,10 @@ uint8_t loadIntervalIndex() {
 
 void saveIntervalIndex(uint8_t index) {
   Preferences prefs;
-  if (!prefs.begin(kNamespace, false)) return;
+  if (!prefs.begin(kNamespace, false)) {
+    Serial.println("[nvs] open failed, interval not saved");
+    return;
+  }
   prefs.putUChar(kKeyInterval, interval::sanitize(index));
   prefs.end();
 }

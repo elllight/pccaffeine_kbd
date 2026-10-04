@@ -7,7 +7,7 @@ namespace ble_keyboard {
 
 void begin(const char* deviceName);
 
-// True while at least one host is connected.
+// True while a paired host is connected over an encrypted link.
 bool isConnected();
 
 // Left Shift down -> holdMs -> release.

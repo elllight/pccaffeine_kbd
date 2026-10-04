@@ -26,6 +26,8 @@ Pin numbers are the common values for this board; they are verified on real hard
 - Transport: **Bluetooth LE HID keyboard** (HOGP). Device name: **`PCCaffeine`**.
 - Bonding enabled so the PC reconnects automatically after pairing once.
 - Re-advertises automatically after disconnect.
+- "Connected" in this spec means a **paired host on an encrypted link** (pairing/encryption
+  complete), not a raw GAP link — before that the host has not subscribed and keystrokes are lost.
 
 ## 4. Behaviour
 
