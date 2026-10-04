@@ -51,6 +51,15 @@ Purpose: BLE HID, OLED 렌더링, NVS, 메인 루프 결합
 | 4.1 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` README (build/flash/pair/use, pinout, BOOT-held-at-power-on caveat) | README exists with sections Build, Flash, Pair, Use | 2.4 | cc:完了 [cb8c2db] |
 | 4.2 | `[Review]` `[lane:gate]` `[tdd:skip:review]` harness-review of full code against spec.md | review verdict APPROVE or all findings fixed | 2.4, 4.1 | cc:完了 [3bf1da4] |
 
+## Phase 5: Documentation (2026-10-05 user request)
+
+Purpose: 사용자 매뉴얼(그림/다이어그램)과 설계사양서(SADS, drawio→SVG)를 docs/에 작성
+
+| Task | 内容 | DoD | Depends | Status |
+|------|------|-----|---------|--------|
+| 5.1 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` `docs/user-manual.md`: 구성품/화면 읽는 법/페어링/버튼/문제해결, 그림(SVG 화면 목업, 상태 흐름도) 포함 | 파일 존재, 링크된 모든 이미지 파일 존재, 섹션 6개 이상(개요·화면·페어링·버튼·LED/피드백·문제해결) | 3.3 | cc:TODO |
+| 5.2 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` `docs/sads.md` 설계사양서 + `docs/diagrams/*.drawio` 원본 + `docs/diagrams/*.svg` 내보내기(시스템 컨텍스트, 하드웨어 블록, SW 모듈 구조, 상태머신, 메인루프 시퀀스) | 각 .drawio에 대응하는 .svg 존재하고 sads.md에서 링크됨; drawio CLI export exit 0 | 3.3 | cc:TODO |
+
 ## 事前確認
 - 事項: PlatformIO 패키지/툴체인 다운로드 (registry.platformio.org, dl.espressif.com) — 외부 수신만, 송신 없음
   理由: `pio run` / `pio test` 최초 실행 시 espressif32 플랫폼·라이브러리 설치 필요
