@@ -31,6 +31,8 @@ pio run -e esp32c3 -t upload
 pio device monitor -e esp32c3
 ```
 
+> macOS에서는 업로드 후 자동 리셋이 칩을 다운로드 모드로 남겨 둘 수 있습니다(화면이 바뀌지 않고 로그에 `waiting for download`). **업로드가 끝나면 USB 케이블을 뽑았다 다시 꽂아** 부팅하세요.
+
 포트가 보이지 않거나 업로드가 실패하면 **BOOT 버튼을 누른 채 RESET 버튼을 눌렀다 떼고**, 그다음 BOOT 버튼을 떼서 다운로드 모드로 진입한 뒤 다시 업로드하세요.
 
 ## Pair
