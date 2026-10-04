@@ -7,3 +7,4 @@
 .claude/state/
 .claude/sessions/
 .harness-mem/
+out/
