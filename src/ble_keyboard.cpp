@@ -75,7 +75,7 @@ ServerCallbacks serverCallbacks;
 void sendReport(uint8_t modifiers) {
   uint8_t report[8] = {modifiers, 0, 0, 0, 0, 0, 0, 0};
   input->setValue(report, sizeof(report));
-  if (!input->notify(secureConn.load())) Serial.println("[ble] notify failed");
+  if (!input->notify()) Serial.println("[ble] notify failed");
 }
 
 }  // namespace
@@ -86,7 +86,7 @@ void begin(const char* deviceName) {
   NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
 
   NimBLEServer* server = NimBLEDevice::createServer();
-  server->setCallbacks(&serverCallbacks);
+  server->setCallbacks(&serverCallbacks, false);
   server->advertiseOnDisconnect(true);
 
   hid = new NimBLEHIDDevice(server);
