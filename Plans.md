@@ -40,9 +40,9 @@ Purpose: BLE HID, OLED 렌더링, NVS, 메인 루프 결합
 
 | Task | 内容 | DoD | Depends | Status |
 |------|------|-----|---------|--------|
-| 3.1 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` Flash via `pio run -e esp32c3 -t upload`, confirm chip = ESP32-C3, OLED shows waiting screen, serial log boots | upload exit 0; serial log shows boot banner; user confirms screen visible | 2.4 | cc:完了 [HASH] |
-| 3.2 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` Pair `PCCaffeine` with host PC, 1-min interval fires Left Shift | serial log shows `fire` at 60 s ±1 s; host observes Shift event (key viewer or idle time reset) | 3.1 | cc:完了 [HASH] |
-| 3.3 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` BOOT button cycles 1→5→8→1, reset on change, value restored after power cycle | serial log shows interval sequence; after reboot interval equals last selection | 3.1 | cc:完了 [HASH] |
+| 3.1 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` Flash via `pio run -e esp32c3 -t upload`, confirm chip = ESP32-C3, OLED shows waiting screen, serial log boots | upload exit 0; serial log shows boot banner; user confirms screen visible | 2.4 | cc:完了 [fe45d21] |
+| 3.2 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` Pair `PCCaffeine` with host PC, 1-min interval fires Left Shift | serial log shows `fire` at 60 s ±1 s; host observes Shift event (key viewer or idle time reset) | 3.1 | cc:完了 [fe45d21] |
+| 3.3 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` BOOT button cycles 1→5→8→1, reset on change, value restored after power cycle | serial log shows interval sequence; after reboot interval equals last selection | 3.1 | cc:完了 [fe45d21] |
 
 ## Phase 4: Review & docs
 
@@ -57,8 +57,8 @@ Purpose: 사용자 매뉴얼(그림/다이어그램)과 설계사양서(SADS, dr
 
 | Task | 内容 | DoD | Depends | Status |
 |------|------|-----|---------|--------|
-| 5.1 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` `docs/user-manual.md`: 구성품/화면 읽는 법/페어링/버튼/문제해결, 그림(SVG 화면 목업, 상태 흐름도) 포함 | 파일 존재, 링크된 모든 이미지 파일 존재, 섹션 6개 이상(개요·화면·페어링·버튼·LED/피드백·문제해결) | 3.3 | cc:完了 [HASH] |
-| 5.2 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` `docs/sads.md` 설계사양서 + `docs/diagrams/*.drawio` 원본 + `docs/diagrams/*.svg` 내보내기(시스템 컨텍스트, 하드웨어 블록, SW 모듈 구조, 상태머신, 메인루프 시퀀스) | 각 .drawio에 대응하는 .svg 존재하고 sads.md에서 링크됨; drawio CLI export exit 0 | 3.3 | cc:完了 [HASH] |
+| 5.1 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` `docs/user-manual.md`: 구성품/화면 읽는 법/페어링/버튼/문제해결, 그림(SVG 화면 목업, 상태 흐름도) 포함 | 파일 존재, 링크된 모든 이미지 파일 존재, 섹션 6개 이상(개요·화면·페어링·버튼·LED/피드백·문제해결) | 3.3 | cc:完了 [fe45d21] |
+| 5.2 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` `docs/sads.md` 설계사양서 + `docs/diagrams/*.drawio` 원본 + `docs/diagrams/*.svg` 내보내기(시스템 컨텍스트, 하드웨어 블록, SW 모듈 구조, 상태머신, 메인루프 시퀀스) | 각 .drawio에 대응하는 .svg 존재하고 sads.md에서 링크됨; drawio CLI export exit 0 | 3.3 | cc:完了 [fe45d21] |
 
 ## 事前確認
 - 事項: PlatformIO 패키지/툴체인 다운로드 (registry.platformio.org, dl.espressif.com) — 외부 수신만, 송신 없음
