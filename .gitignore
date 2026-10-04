@@ -8,3 +8,4 @@
 .claude/sessions/
 .harness-mem/
 out/
+.harness/
