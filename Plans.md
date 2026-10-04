@@ -49,7 +49,7 @@ Purpose: BLE HID, OLED 렌더링, NVS, 메인 루프 결합
 | Task | 内容 | DoD | Depends | Status |
 |------|------|-----|---------|--------|
 | 4.1 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` README (build/flash/pair/use, pinout, BOOT-held-at-power-on caveat) | README exists with sections Build, Flash, Pair, Use | 2.4 | cc:完了 [cb8c2db] |
-| 4.2 | `[Review]` `[lane:gate]` `[tdd:skip:review]` harness-review of full code against spec.md | review verdict APPROVE or all findings fixed | 2.4, 4.1 | cc:TODO |
+| 4.2 | `[Review]` `[lane:gate]` `[tdd:skip:review]` harness-review of full code against spec.md | review verdict APPROVE or all findings fixed | 2.4, 4.1 | cc:完了 [3bf1da4] |
 
 ## 事前確認
 - 事項: PlatformIO 패키지/툴체인 다운로드 (registry.platformio.org, dl.espressif.com) — 외부 수신만, 송신 없음
