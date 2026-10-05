@@ -9,3 +9,4 @@
 .harness-mem/
 out/
 .harness/
+.claude/memory/

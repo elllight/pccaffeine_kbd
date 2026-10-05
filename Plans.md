@@ -79,9 +79,9 @@ Purpose: PC 없이 보드에서 모든 페어링 초기화 (spec §4.5)
 
 | Task | 内容 | DoD | Depends | Status |
 |------|------|-----|---------|--------|
-| 7.1 | `[Feature]` `[lane:gate]` `[tdd:required]` core `ButtonGesture`: short(<1 s, on release) / cancel(1–5 s) / long(≥5 s, 1회, 누른 채 발생) + 남은 초 계산 | native tests: short/cancel/long/long-후-release 무동작/경계값(999·1000·4999·5000 ms)/millis wrap; PASS | - | cc:TODO |
-| 7.2 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `ble_keyboard::clearPairings()` (모든 연결 끊기 + deleteAllBonds), main: gesture 연결, 화면 `RST n`, 로그 `[btn] pairing reset` | `pio run` 경고 0, `pio check` HIGH 0 | 7.1, 6.3 | cc:TODO |
-| 7.3 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` 실기: 짧게 누르기 간격 변경, 5초 누르기 → Mac 연결 해제·`hosts=0/3`, Mac에서 기기 삭제 후 재페어링 성공 | 시리얼 로그 + 사용자 확인 | 7.2 | cc:TODO |
+| 7.1 | `[Feature]` `[lane:gate]` `[tdd:required]` core `ButtonGesture`: short(<1 s, on release) / cancel(1–5 s) / long(≥5 s, 1회, 누른 채 발생) + 남은 초 계산 | native tests: short/cancel/long/long-후-release 무동작/경계값(999·1000·4999·5000 ms)/millis wrap; PASS | - | cc:完了 [76910d1] |
+| 7.2 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `ble_keyboard::clearPairings()` (모든 연결 끊기 + deleteAllBonds), main: gesture 연결, 화면 `RST n`, 로그 `[btn] pairing reset` | `pio run` 경고 0, `pio check` HIGH 0 | 7.1, 6.3 | cc:完了 [ad94eb6] |
+| 7.3 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` 실기: 짧게 누르기 간격 변경, 5초 누르기 → Mac 연결 해제·`hosts=0/3`, Mac에서 기기 삭제 후 재페어링 성공 | 시리얼 로그 + 사용자 확인 | 7.2 | cc:完了 [ad94eb6] (실기 중 결함 2건 발견·수정: 광고 중 unpair EBUSY → ca3791b, 신규 본딩 후 광고 중단 → ad94eb6) |
 
 ## 事前確認
 - 事項: PlatformIO 패키지/툴체인 다운로드 (registry.platformio.org, dl.espressif.com) — 외부 수신만, 송신 없음
