@@ -47,7 +47,7 @@ ESP32-C3 + 0.42인치 OLED(72×40) 보드 하나면 됩니다.
 
 ```sh
 uv tool install platformio          # 또는 pipx install platformio
-git clone https://github.com/<you>/pccaffeine_kbd.git && cd pccaffeine_kbd
+git clone https://github.com/elllight/pccaffeine_kbd.git && cd pccaffeine_kbd
 
 pio run -e esp32c3 -t upload        # 빌드 + 업로드
 pio device monitor -e esp32c3       # 시리얼 로그 (선택)
