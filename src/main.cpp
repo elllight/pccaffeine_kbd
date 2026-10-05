@@ -40,7 +40,8 @@ void onButtonPressed(uint32_t now) {
 }
 
 void onConnectionChanged(bool connected) {
-  Serial.printf("[ble] %s\n", connected ? "connected" : "disconnected");
+  Serial.printf("[ble] %s\n",
+                connected ? "first host ready, timer started" : "no hosts, timer paused");
 }
 
 void onFire(uint32_t now) {
@@ -56,14 +57,17 @@ void onFire(uint32_t now) {
 void logStatus(uint32_t now) {
   char remaining[8];
   view::formatMSS(countdown.remainingMs(now), remaining, sizeof(remaining));
-  Serial.printf("[stat] link=%s interval=%lum remaining=%s\n",
-                countdown.running() ? "paired" : "waiting",
+  Serial.printf("[stat] hosts=%u/%u adv=%d interval=%lum remaining=%s\n",
+                ble_keyboard::connectedCount(), ble_keyboard::kMaxHosts,
+                ble_keyboard::isAdvertising(),
                 static_cast<unsigned long>(interval::minutesAt(intervalIndex)), remaining);
 }
 
 void render(uint32_t now) {
   screen::State s;
   s.connected = countdown.running();
+  s.hostCount = ble_keyboard::connectedCount();
+  s.maxHosts = ble_keyboard::kMaxHosts;
   s.blinkOn = (now / kBlinkMs) % 2 == 0;
   s.remainingFraction = countdown.remainingFraction(now);
   s.remainingMs = countdown.remainingMs(now);

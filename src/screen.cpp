@@ -44,12 +44,11 @@ void draw(const State& s) {
 
   drawPie(s.remainingFraction, s.connected);
 
-  // BLE state
+  // Link state "BT n/max", blinking while no host is connected
   u8g2.setFont(u8g2_font_5x7_tr);
-  if (s.connected) {
-    u8g2.drawStr(kTextX, 0, "BT ON");
-  } else if (s.blinkOn) {
-    u8g2.drawStr(kTextX, 0, "PAIR");
+  if (s.connected || s.blinkOn) {
+    view::formatLinkLabel(s.hostCount, s.maxHosts, buf, sizeof(buf));
+    u8g2.drawStr(kTextX, 0, buf);
   }
 
   // Remaining time

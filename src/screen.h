@@ -6,7 +6,9 @@
 namespace screen {
 
 struct State {
-  bool connected;
+  bool connected;     // at least one host (countdown running)
+  uint8_t hostCount;  // connected hosts
+  uint8_t maxHosts;
   bool blinkOn;             // toggles while waiting for a host
   float remainingFraction;  // 0..1
   uint32_t remainingMs;

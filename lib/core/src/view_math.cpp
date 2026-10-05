@@ -35,6 +35,10 @@ void formatMSS(uint32_t remainingMs, char* buf, size_t len) {
            static_cast<unsigned long>(secs % 60));
 }
 
+void formatLinkLabel(uint8_t connected, uint8_t max, char* buf, size_t len) {
+  snprintf(buf, len, "BT %u/%u", static_cast<unsigned>(connected), static_cast<unsigned>(max));
+}
+
 void formatIntervalLabel(uint32_t minutes, char* buf, size_t len) {
   snprintf(buf, len, "[%lum]", static_cast<unsigned long>(minutes));
 }

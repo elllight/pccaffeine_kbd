@@ -20,6 +20,9 @@ bool pieFilled(int dx, int dy, float radius, float remainingFraction);
 // "M:SS" with seconds rounded up so the display never shows 0:00 early.
 void formatMSS(uint32_t remainingMs, char* buf, size_t len);
 
+// "BT n/max" — connected hosts / maximum hosts
+void formatLinkLabel(uint8_t connected, uint8_t max, char* buf, size_t len);
+
 // "[Nm]"
 void formatIntervalLabel(uint32_t minutes, char* buf, size_t len);
 

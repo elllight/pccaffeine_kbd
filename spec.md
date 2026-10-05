@@ -28,6 +28,11 @@ Pin numbers are the common values for this board; they are verified on real hard
 - Re-advertises automatically after disconnect.
 - "Connected" in this spec means a **paired host on an encrypted link** (pairing/encryption
   complete), not a raw GAP link — before that the host has not subscribed and keystrokes are lost.
+- **Multi-host**: up to **3 hosts may be connected at the same time** (`kMaxHosts = 3`).
+  - The device keeps advertising while fewer than 3 hosts are connected, so another PC can pair
+    or reconnect; advertising stops at 3 and resumes when one disconnects.
+  - Each keystroke is sent to **all** connected hosts at once.
+  - Up to 5 bonds are remembered (so a PC that is temporarily away does not need re-pairing).
 
 ## 4. Behaviour
 
@@ -43,16 +48,17 @@ Pin numbers are the common values for this board; they are verified on real hard
 - Factory default (first boot): 1 min.
 
 ### 4.3 Countdown and connection
-- Countdown runs **only while a BLE host is connected**.
-- When not connected: timer is paused, display shows a pairing/waiting state.
-- When a connection is (re)established: countdown starts from the full interval.
+- Countdown runs **while at least one host is connected** (connected count ≥ 1).
+- When no host is connected: timer is paused, display shows a pairing/waiting state.
+- When the first host connects (count 0 → 1): countdown starts from the full interval.
+  Additional hosts joining or leaving while count stays ≥ 1 do **not** reset the countdown.
 - After each keystroke the countdown restarts from the full interval (periodic repeat).
 
 ### 4.4 Display (72x40)
 - Left: pie chart (~36 px diameter). Filled sector = remaining fraction. Elapsed time
   eats the pie clockwise from 12 o'clock like a clock hand (at 50 % the right half is empty).
 - Right column (top → bottom):
-  - BLE state: connected / advertising (blinking while waiting)
+  - Link state `BT n/3` — n = connected hosts, 3 = max hosts. Blinks while n = 0 (waiting).
   - Remaining time `M:SS`
   - Current interval `[1m]` / `[5m]` / `[8m]`
 - On keystroke: brief visual feedback (display invert ~200 ms) and LED blink.

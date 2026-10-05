@@ -5,6 +5,9 @@
 #include <NimBLEHIDDevice.h>
 
 #include <atomic>
+#include <mutex>
+
+#include "host_set.h"
 
 namespace ble_keyboard {
 
@@ -45,28 +48,44 @@ const uint8_t kReportMap[] = {
 NimBLEHIDDevice* hid = nullptr;
 NimBLECharacteristic* input = nullptr;
 
-// Handle of the encrypted (paired) host link. Written from the NimBLE host task,
-// read from loop(). A raw GAP link is not enough: before pairing completes the
-// host has not subscribed to the input report and notify() is silently dropped.
-std::atomic<uint16_t> secureConn{BLE_HS_CONN_HANDLE_NONE};
+static_assert(HostSet::kNone == BLE_HS_CONN_HANDLE_NONE, "HostSet sentinel must match NimBLE");
+static_assert(HostSet::kCapacity == kMaxHosts, "HostSet capacity must match kMaxHosts");
+static_assert(CONFIG_BT_NIMBLE_MAX_CONNECTIONS >= kMaxHosts,
+              "raise CONFIG_BT_NIMBLE_MAX_CONNECTIONS");
+
+// Encrypted (paired) host links. Written from the NimBLE host task, read from
+// loop(). A raw GAP link is not enough: before pairing completes the host has
+// not subscribed to the input report and notify() is silently dropped.
+HostSet hosts;
+std::mutex hostsMutex;
+std::atomic<uint8_t> hostCount{0};
+
+void updateHosts(bool add, uint16_t handle) {
+  std::lock_guard<std::mutex> lock(hostsMutex);
+  const bool changed = add ? hosts.add(handle) : hosts.remove(handle);
+  hostCount = hosts.count();
+  if (changed) Serial.printf("[ble] hosts=%u/%u\n", hosts.count(), kMaxHosts);
+}
 
 class ServerCallbacks : public NimBLEServerCallbacks {
-  void onConnect(NimBLEServer*, NimBLEConnInfo& info) override {
+  void onConnect(NimBLEServer* server, NimBLEConnInfo& info) override {
     Serial.printf("[ble] link up (handle=%u), waiting for pairing\n", info.getConnHandle());
+    // A connection stops advertising; keep a free slot visible to other PCs.
+    if (server->getConnectedCount() < kMaxHosts) NimBLEDevice::startAdvertising();
   }
 
   void onAuthenticationComplete(NimBLEConnInfo& info) override {
     if (info.isEncrypted()) {
-      secureConn = info.getConnHandle();
+      updateHosts(true, info.getConnHandle());
     } else {
       Serial.printf("[ble] pairing failed (handle=%u)\n", info.getConnHandle());
     }
   }
 
   void onDisconnect(NimBLEServer*, NimBLEConnInfo& info, int reason) override {
-    uint16_t handle = info.getConnHandle();
-    secureConn.compare_exchange_strong(handle, BLE_HS_CONN_HANDLE_NONE);
-    Serial.printf("[ble] link down (reason=0x%x)\n", reason);
+    Serial.printf("[ble] link down (handle=%u, reason=0x%x)\n", info.getConnHandle(), reason);
+    updateHosts(false, info.getConnHandle());
+    // advertiseOnDisconnect(true) restarts advertising.
   }
 };
 
@@ -105,8 +124,16 @@ void begin(const char* deviceName) {
   adv->start();  // also starts the GATT server
 }
 
+uint8_t connectedCount() {
+  return hostCount.load();
+}
+
 bool isConnected() {
-  return secureConn.load() != BLE_HS_CONN_HANDLE_NONE;
+  return connectedCount() > 0;
+}
+
+bool isAdvertising() {
+  return NimBLEDevice::getAdvertising()->isAdvertising();
 }
 
 void tapLeftShift(uint32_t holdMs) {

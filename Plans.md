@@ -60,10 +60,23 @@ Purpose: 사용자 매뉴얼(그림/다이어그램)과 설계사양서(SADS, dr
 | 5.1 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` `docs/user-manual.md`: 구성품/화면 읽는 법/페어링/버튼/문제해결, 그림(SVG 화면 목업, 상태 흐름도) 포함 | 파일 존재, 링크된 모든 이미지 파일 존재, 섹션 6개 이상(개요·화면·페어링·버튼·LED/피드백·문제해결) | 3.3 | cc:完了 [fe45d21] |
 | 5.2 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` `docs/sads.md` 설계사양서 + `docs/diagrams/*.drawio` 원본 + `docs/diagrams/*.svg` 내보내기(시스템 컨텍스트, 하드웨어 블록, SW 모듈 구조, 상태머신, 메인루프 시퀀스) | 각 .drawio에 대응하는 .svg 존재하고 sads.md에서 링크됨; drawio CLI export exit 0 | 3.3 | cc:完了 [fe45d21] |
 
+## Phase 6: Multi-host (2026-10-05 user request)
+
+Purpose: 최대 3대 PC 동시 연결, 화면에 현재/최대 연결 수 표시 (spec §3 Multi-host, §4.3, §4.4)
+
+| Task | 内容 | DoD | Depends | Status |
+|------|------|-----|---------|--------|
+| 6.1 | `[Feature]` `[lane:gate]` `[tdd:required]` core `HostSet`(최대 3, 핸들 추가/제거, 중복 무시, 가득 참 판정) + `view::formatLinkLabel(n,max)` → `BT n/3` | native tests: add/remove/dup/overflow/unknown-remove, 라벨 `BT 0/3`·`BT 3/3`; `pio test -e native` PASS | - | cc:TODO |
+| 6.2 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `ble_keyboard`: 암호화 링크를 HostSet으로 추적, `connectedCount()` 제공, 3대 미만이면 연결 후에도 광고 재개; build flags MAX_CONNECTIONS=3, MAX_BONDS=5, MAX_CCCDS=16 | `pio run -e esp32c3` 경고 0 | 6.1 | cc:TODO |
+| 6.3 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` main/screen: 상단 `BT n/3`(n=0이면 깜빡임), 연결 수 변화 로그 `[ble] hosts=n/3`, `[stat]`에 `hosts=n/3 adv=0/1` | `pio run` 경고 0, `pio check` HIGH 0, clang-format OK | 6.2 | cc:TODO |
+| 6.4 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` 실기: 1대 연결 시 `BT 1/3` 표시와 `adv=1` 유지, Shift 수신(HIDIdleTime 리셋). 2대 이상 동시 연결은 PC가 추가로 있을 때만 | 시리얼 로그 + 사용자 육안; 다중 PC 미검증 시 `unknown`으로 보고 | 6.3 | cc:TODO |
+| 6.5 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` user-manual(여러 PC 연결 절, 화면 `BT n/3`), sads(ADR-8, R-3 해소, 인터페이스), README, 다이어그램 재생성 | 문서 링크 유효, SVG 재내보내기 exit 0 | 6.3 | cc:TODO |
+| 6.6 | `[Review]` `[lane:gate]` `[tdd:skip:review]` 독립 리뷰 (HostSet 스레드 안전성, 광고 재개 로직) | verdict APPROVE 또는 지적 사항 반영 | 6.3 | cc:TODO |
+
 ## 事前確認
 - 事項: PlatformIO 패키지/툴체인 다운로드 (registry.platformio.org, dl.espressif.com) — 외부 수신만, 송신 없음
   理由: `pio run` / `pio test` 최초 실행 시 espressif32 플랫폼·라이브러리 설치 필요
   scope: Phase 0 / Task 0.1
 - 事項: destructive — 보드 플래시 덮어쓰기 (`pio run -t upload`)
   理由: 펌웨어 기록 시 기존 보드 펌웨어가 지워짐 (보드 연결 후 사용자 노티 이후에만 실행)
-  scope: Phase 3 / Task 3.1–3.3
+  scope: Phase 3 / Task 3.1–3.3, Phase 6 / Task 6.4

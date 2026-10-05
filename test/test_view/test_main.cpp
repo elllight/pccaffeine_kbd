@@ -63,6 +63,16 @@ static void test_interval_label() {
   TEST_ASSERT_EQUAL_STRING("[8m]", buf);
 }
 
+static void test_link_label() {
+  char buf[8];
+  view::formatLinkLabel(0, 3, buf, sizeof(buf));
+  TEST_ASSERT_EQUAL_STRING("BT 0/3", buf);
+  view::formatLinkLabel(2, 3, buf, sizeof(buf));
+  TEST_ASSERT_EQUAL_STRING("BT 2/3", buf);
+  view::formatLinkLabel(3, 3, buf, sizeof(buf));
+  TEST_ASSERT_EQUAL_STRING("BT 3/3", buf);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_consumed_degrees);
@@ -72,5 +82,6 @@ int main() {
   RUN_TEST(test_empty_pie_has_no_pixels);
   RUN_TEST(test_format_mss_rounds_up_seconds);
   RUN_TEST(test_interval_label);
+  RUN_TEST(test_link_label);
   return UNITY_END();
 }
