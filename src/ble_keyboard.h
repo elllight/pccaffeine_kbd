@@ -19,8 +19,9 @@ bool isConnected();
 // True while advertising (accepting another host).
 bool isAdvertising();
 
-// Call regularly from loop(): restarts advertising if it stopped while a host slot is
-// free (e.g. NimBLE preempts advertising when it stores a new host's IRK).
+// Call about once a second from loop(): prints queued BLE events, drops links that
+// did not pair within 30 s, and keeps advertising on exactly while a host slot is
+// free (NimBLE preempts advertising when it stores a new host's IRK).
 void maintain();
 
 // Number of hosts whose pairing keys are stored in NVS.

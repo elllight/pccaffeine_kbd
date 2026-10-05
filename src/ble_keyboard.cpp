@@ -8,6 +8,7 @@
 #include <mutex>
 
 #include "host_set.h"
+#include "pending_links.h"
 
 namespace ble_keyboard {
 
@@ -45,46 +46,121 @@ const uint8_t kReportMap[] = {
     0xC0,             // End Collection
 };
 
+constexpr uint32_t kPairingTimeoutMs = 30000;  // drop links that never finish pairing
+
 NimBLEHIDDevice* hid = nullptr;
 NimBLECharacteristic* input = nullptr;
 
 static_assert(HostSet::kNone == BLE_HS_CONN_HANDLE_NONE, "HostSet sentinel must match NimBLE");
+static_assert(PendingLinks::kNone == BLE_HS_CONN_HANDLE_NONE, "sentinel must match NimBLE");
 static_assert(HostSet::kCapacity == kMaxHosts, "HostSet capacity must match kMaxHosts");
-static_assert(CONFIG_BT_NIMBLE_MAX_CONNECTIONS >= kMaxHosts,
-              "raise CONFIG_BT_NIMBLE_MAX_CONNECTIONS");
+static_assert(CONFIG_BT_NIMBLE_MAX_CONNECTIONS > kMaxHosts,
+              "keep a spare raw connection so an unpaired link cannot block a real host");
+static_assert(PendingLinks::kCapacity == CONFIG_BT_NIMBLE_MAX_CONNECTIONS,
+              "PendingLinks must track every raw connection");
 
-// Encrypted (paired) host links. Written from the NimBLE host task, read from
-// loop(). A raw GAP link is not enough: before pairing completes the host has
-// not subscribed to the input report and notify() is silently dropped.
+// Paired hosts (encrypted links) and raw links still pairing. Written from the
+// NimBLE host task callbacks, read from loop(); guarded by stateMutex. A raw GAP
+// link is not enough: before pairing completes the host has not subscribed to
+// the input report.
 HostSet hosts;
-std::mutex hostsMutex;
+PendingLinks pending;
+std::mutex stateMutex;
 std::atomic<uint8_t> hostCount{0};
+std::atomic<bool> resetting{false};
 
-void updateHosts(bool add, uint16_t handle) {
-  std::lock_guard<std::mutex> lock(hostsMutex);
-  const bool changed = add ? hosts.add(handle) : hosts.remove(handle);
-  hostCount = hosts.count();
-  if (changed) Serial.printf("[ble] hosts=%u/%u\n", hosts.count(), kMaxHosts);
+// Callbacks run on the NimBLE host task, which must never block on Serial
+// (USB CDC writes can stall). They post events here; maintain() logs them.
+enum class EventType : uint8_t {
+  LinkUp,
+  LinkDown,
+  PairingFailed,
+  HostsChanged,
+  RejectedDuringReset
+};
+struct Event {
+  EventType type;
+  uint16_t handle;
+  int reason;
+  uint8_t hosts;
+};
+QueueHandle_t events = nullptr;
+
+void post(EventType type, uint16_t handle, int reason = 0) {
+  if (events == nullptr) return;
+  const Event e{type, handle, reason, hostCount.load()};
+  xQueueSend(events, &e, 0);  // drop the log line rather than block the BLE stack
+}
+
+void logEvents() {
+  Event e;
+  while (events != nullptr && xQueueReceive(events, &e, 0) == pdTRUE) {
+    switch (e.type) {
+      case EventType::LinkUp:
+        Serial.printf("[ble] link up (handle=%u), waiting for pairing\n", e.handle);
+        break;
+      case EventType::LinkDown:
+        Serial.printf("[ble] link down (handle=%u, reason=0x%x)\n", e.handle, e.reason);
+        break;
+      case EventType::PairingFailed:
+        Serial.printf("[ble] pairing failed (handle=%u)\n", e.handle);
+        break;
+      case EventType::HostsChanged:
+        Serial.printf("[ble] hosts=%u/%u\n", e.hosts, kMaxHosts);
+        break;
+      case EventType::RejectedDuringReset:
+        Serial.printf("[ble] link %u rejected during pairing reset\n", e.handle);
+        break;
+    }
+  }
 }
 
 class ServerCallbacks : public NimBLEServerCallbacks {
   void onConnect(NimBLEServer* server, NimBLEConnInfo& info) override {
-    Serial.printf("[ble] link up (handle=%u), waiting for pairing\n", info.getConnHandle());
-    // A connection stops advertising; keep a free slot visible to other PCs.
-    if (server->getConnectedCount() < kMaxHosts) NimBLEDevice::startAdvertising();
+    const uint16_t handle = info.getConnHandle();
+    if (resetting) {
+      // Advertising must stay off while bonds are deleted (see clearPairings).
+      server->disconnect(handle);
+      post(EventType::RejectedDuringReset, handle);
+      return;
+    }
+    {
+      std::lock_guard<std::mutex> lock(stateMutex);
+      pending.add(handle, millis());
+    }
+    post(EventType::LinkUp, handle);
+    // A connection stops advertising; keep the device visible while a host slot is free.
+    if (hostCount < kMaxHosts) NimBLEDevice::startAdvertising();
   }
 
   void onAuthenticationComplete(NimBLEConnInfo& info) override {
-    if (info.isEncrypted()) {
-      updateHosts(true, info.getConnHandle());
-    } else {
-      Serial.printf("[ble] pairing failed (handle=%u)\n", info.getConnHandle());
+    const uint16_t handle = info.getConnHandle();
+    if (!info.isEncrypted()) {
+      post(EventType::PairingFailed, handle);
+      return;
     }
+    bool changed;
+    {
+      std::lock_guard<std::mutex> lock(stateMutex);
+      pending.remove(handle);
+      changed = hosts.add(handle);
+      hostCount = hosts.count();
+    }
+    if (changed) post(EventType::HostsChanged, handle);
+    if (hostCount >= kMaxHosts) NimBLEDevice::stopAdvertising();
   }
 
   void onDisconnect(NimBLEServer*, NimBLEConnInfo& info, int reason) override {
-    Serial.printf("[ble] link down (handle=%u, reason=0x%x)\n", info.getConnHandle(), reason);
-    updateHosts(false, info.getConnHandle());
+    const uint16_t handle = info.getConnHandle();
+    bool changed;
+    {
+      std::lock_guard<std::mutex> lock(stateMutex);
+      pending.remove(handle);
+      changed = hosts.remove(handle);
+      hostCount = hosts.count();
+    }
+    post(EventType::LinkDown, handle, reason);
+    if (changed) post(EventType::HostsChanged, handle);
     // advertiseOnDisconnect(true) restarts advertising.
   }
 };
@@ -100,6 +176,7 @@ void sendReport(uint8_t modifiers) {
 }  // namespace
 
 void begin(const char* deviceName) {
+  events = xQueueCreate(16, sizeof(Event));
   NimBLEDevice::init(deviceName);
   NimBLEDevice::setSecurityAuth(true, false, true);  // bonding, no MITM, secure connections
   NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
@@ -137,8 +214,27 @@ bool isAdvertising() {
 }
 
 void maintain() {
+  logEvents();
+  if (resetting) return;
+
+  uint16_t stale[PendingLinks::kCapacity];
+  uint8_t staleCount;
+  {
+    std::lock_guard<std::mutex> lock(stateMutex);
+    staleCount = pending.expired(millis(), kPairingTimeoutMs, stale);
+  }
   NimBLEServer* server = NimBLEDevice::getServer();
-  if (server->getConnectedCount() >= kMaxHosts || isAdvertising()) return;
+  for (uint8_t i = 0; i < staleCount; ++i) {
+    Serial.printf("[ble] link %u did not pair within %lus, disconnecting\n", stale[i],
+                  static_cast<unsigned long>(kPairingTimeoutMs / 1000));
+    server->disconnect(stale[i]);
+  }
+
+  if (hostCount >= kMaxHosts) {
+    if (isAdvertising()) NimBLEDevice::stopAdvertising();
+    return;
+  }
+  if (isAdvertising() || server->getConnectedCount() >= CONFIG_BT_NIMBLE_MAX_CONNECTIONS) return;
   if (NimBLEDevice::startAdvertising()) Serial.println("[ble] advertising resumed");
 }
 
@@ -152,18 +248,21 @@ int clearPairings() {
 
   // ble_gap_unpair() refuses with BLE_HS_EBUSY while advertising if the peer
   // distributed an IRK (all Apple hosts do), so keep advertising off until done.
+  // `resetting` stops onConnect from restarting it and rejects new links meanwhile.
+  resetting = true;
   server->advertiseOnDisconnect(false);
   NimBLEDevice::stopAdvertising();
   for (uint16_t handle : server->getPeerDevices()) server->disconnect(handle);
 
   bool ok = false;
-  for (int attempt = 0; attempt < 5 && !ok; ++attempt) {
-    if (attempt > 0) delay(20);
+  for (int attempt = 0; attempt < 10 && !ok; ++attempt) {
+    if (attempt > 0) delay(50);
     NimBLEDevice::stopAdvertising();
     ok = NimBLEDevice::deleteAllBonds();
   }
 
   server->advertiseOnDisconnect(true);
+  resetting = false;
   NimBLEDevice::startAdvertising();
   return ok ? bonds : -1;
 }

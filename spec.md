@@ -33,6 +33,8 @@ Pin numbers are the common values for this board; they are verified on real hard
     or reconnect; advertising stops at 3 and resumes when one disconnects.
   - Each keystroke is sent to **all** connected hosts at once.
   - Up to 5 bonds are remembered (so a PC that is temporarily away does not need re-pairing).
+  - One extra raw link slot exists for a host that is still pairing; a link that has not
+    finished pairing within **30 s** is disconnected so it cannot block a real host.
 
 ## 4. Behaviour
 

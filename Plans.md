@@ -71,6 +71,7 @@ Purpose: 최대 3대 PC 동시 연결, 화면에 현재/최대 연결 수 표시
 | 6.3 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` main/screen: 상단 `BT n/3`(n=0이면 깜빡임), 연결 수 변화 로그 `[ble] hosts=n/3`, `[stat]`에 `hosts=n/3 adv=0/1` | `pio run` 경고 0, `pio check` HIGH 0, clang-format OK | 6.2 | cc:完了 [616f69e] |
 | 6.4 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` 실기: 1대 연결 시 `BT 1/3` 표시와 `adv=1` 유지, Shift 수신(HIDIdleTime 리셋). 2대 이상 동시 연결은 PC가 추가로 있을 때만 | 시리얼 로그 + 사용자 육안; 다중 PC 미검증 시 `unknown`으로 보고 | 6.3 | cc:完了 [616f69e] (1대 실측 OK: BT 1/3, adv=1 BLE 스캔 확인, 58회 fire ≈60 s; 2대 이상 동시 연결 unknown) |
 | 6.5 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` user-manual(여러 PC 연결 절, 화면 `BT n/3`, 페어링 초기화 절), sads(ADR-8, R-3 해소, 인터페이스), README, 다이어그램 재생성 | 문서 링크 유효, SVG 재내보내기 exit 0 | 6.3, 7.2 | cc:TODO |
+| 6.7 | `[Fix]` `[lane:gate]` `[tdd:required]` 리뷰 지적 반영: (1) raw 연결 여유(MAX_CONNECTIONS=4) + 광고 판단을 페어링 호스트 수로 + 30 s 미페어링 링크 끊기(core `PendingLinks`) (2) 초기화 중 플래그로 onConnect 광고 재개 차단 (3) 콜백 Serial 제거 → FreeRTOS 큐로 loop에서 로깅 | `test_pending` PASS, 전체 native PASS, `pio run` 경고 0, `pio check` HIGH 0, 재리뷰 critical/major 0 | 6.6 | cc:TODO |
 | 6.6 | `[Review]` `[lane:gate]` `[tdd:skip:review]` 독립 리뷰 (HostSet 스레드 안전성, 광고 재개 로직, 페어링 초기화) | verdict APPROVE 또는 지적 사항 반영 | 6.3, 7.2 | cc:TODO |
 
 ## Phase 7: Pairing reset by long press (2026-10-05 user request)
