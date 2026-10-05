@@ -136,6 +136,12 @@ bool isAdvertising() {
   return NimBLEDevice::getAdvertising()->isAdvertising();
 }
 
+void maintain() {
+  NimBLEServer* server = NimBLEDevice::getServer();
+  if (server->getConnectedCount() >= kMaxHosts || isAdvertising()) return;
+  if (NimBLEDevice::startAdvertising()) Serial.println("[ble] advertising resumed");
+}
+
 int bondCount() {
   return NimBLEDevice::getNumBonds();
 }

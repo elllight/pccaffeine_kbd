@@ -18,6 +18,7 @@ constexpr uint32_t kFrameMs = 100;
 constexpr uint32_t kFlashMs = 200;
 constexpr uint32_t kBlinkMs = 500;
 constexpr uint32_t kStatusLogMs = 10000;
+constexpr uint32_t kBleMaintainMs = 1000;
 
 uint8_t intervalIndex = interval::kDefaultIndex;
 Countdown countdown(interval::durationMs(interval::kDefaultIndex));
@@ -28,6 +29,7 @@ uint32_t flashUntilMs = 0;
 bool flashing = false;
 uint32_t lastFrameMs = 0;
 uint32_t lastStatusLogMs = 0;
+uint32_t lastBleMaintainMs = 0;
 
 void setLed(bool on) {
   digitalWrite(pins::kLed, on ? LOW : HIGH);
@@ -143,6 +145,11 @@ void loop() {
   if (now - lastFrameMs >= kFrameMs) {
     lastFrameMs = now;
     render(now);
+  }
+
+  if (now - lastBleMaintainMs >= kBleMaintainMs) {
+    lastBleMaintainMs = now;
+    ble_keyboard::maintain();
   }
 
   if (now - lastStatusLogMs >= kStatusLogMs) {

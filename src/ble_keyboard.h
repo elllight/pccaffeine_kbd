@@ -19,6 +19,10 @@ bool isConnected();
 // True while advertising (accepting another host).
 bool isAdvertising();
 
+// Call regularly from loop(): restarts advertising if it stopped while a host slot is
+// free (e.g. NimBLE preempts advertising when it stores a new host's IRK).
+void maintain();
+
 // Number of hosts whose pairing keys are stored in NVS.
 int bondCount();
 
