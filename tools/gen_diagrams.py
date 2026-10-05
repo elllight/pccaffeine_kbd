@@ -274,7 +274,7 @@ def software_architecture():
     nim = d.box("NimBLE-Arduino 2.5.1", 760, rows[0] + 12, 280, 46, EXT)
     pref = d.box("Preferences (arduino-esp32 2.0.x)", 760, rows[1] + 12, 280, 46, EXT)
     u8 = d.box("U8g2 2.36.18 + Wire", 760, rows[2] + 12, 280, 46, EXT)
-    hs = d.box("<b>HostSet</b><br>암호화된 호스트 핸들 (최대 3)", 40, rows[0], 280, 70, CORE)
+    hs = d.box("<b>HostSet</b> · <b>PendingLinks</b><br>페어링된 호스트(최대 3) · 30 s 미페어링", 40, rows[0], 280, 70, CORE)
     iv = d.box("<b>interval_cycle</b><br>1→5→8분, sanitize", 40, rows[1], 280, 70, CORE)
     vm = d.box("<b>view_math</b><br>파이 각도, M:SS, BT n/3", 40, rows[2], 280, 70, CORE)
     d.box("<b>Countdown</b><br>연결 중에만 진행, 1회 fire", 40, 490, 280, 50, CORE)

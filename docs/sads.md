@@ -80,6 +80,7 @@ ESP32-C3 + 0.42" OLED 보드를 BLE HID 키보드로 동작시켜, 설정한 간
 | `Debouncer` | `update(rawPressed, now) → bool`, `pressed()` | 30 ms 동안 안정된 입력만 받아들입니다. 안정된 상태(`pressed()`)를 `ButtonGesture`에 넘깁니다. |
 | `ButtonGesture` | `update(pressed, now) → Event{None, Short, Long}`, `holding(now)`, `secondsToLong(now)` | 짧게(1 s 미만에서 뗌) / 취소(1–5 s) / 길게(5 s 도달 시 1회, 누른 채 발생). `RST n` 표시용 남은 초 계산 |
 | `HostSet` | `add(handle)`, `remove(handle)`, `contains`, `count()`, `full()` | 암호화된 호스트 연결 핸들 집합, 최대 3. 중복·무효 핸들 무시 |
+| `PendingLinks` | `add(handle, now)`, `remove(handle)`, `expired(now, timeout, out)` | 아직 페어링하지 않은 raw 연결과 접속 시각. 30 s 넘게 페어링하지 않은 연결을 찾아냄 |
 | `view_math` | `consumedDegrees`, `clockAngleDeg`, `pieFilled`, `formatMSS`, `formatLinkLabel`, `formatIntervalLabel` | 파이 픽셀 판정과 시간 문자열 생성. 초는 올림 처리해서 만료 전에 `0:00`이 보이지 않게 합니다. |
 
 #### Adapters
@@ -130,8 +131,8 @@ Linked 상태를 따로 두는 이유는 §7(ADR-3)에 있습니다. BOOT 5초 �
 | 장치 이름 / Appearance | `PCCaffeine` / `0x03C1` (Keyboard) |
 | 서비스 | HID (0x1812), Device Information (PnP), Battery (100 % 고정) |
 | 보안 | Bonding ON, MITM OFF, Secure Connections ON, IO capability `NoInputNoOutput` (Just Works) |
-| 동시 연결 | 최대 3 (`kMaxHosts`, `CONFIG_BT_NIMBLE_MAX_CONNECTIONS=3`), 본딩 저장 5 (`MAX_BONDS=5`), CCCD 16 |
-| 광고 | 연결 수 < 3이면 연결 중에도 계속 광고. 끊기면 `advertiseOnDisconnect(true)`로 재개 |
+| 동시 연결 | 페어링된 호스트 최대 3 (`kMaxHosts`) + 페어링 중인 연결용 여유 1 (`CONFIG_BT_NIMBLE_MAX_CONNECTIONS=4`), 본딩 저장 5, CCCD 16 |
+| 광고 | 페어링된 호스트 < 3이면 연결 중에도 계속 광고, 3이 되면 중단. 끊기면 `advertiseOnDisconnect(true)`로 재개 |
 | Input Report | Report ID 1, 8바이트: `[modifiers, reserved, key1..key6]` |
 | 전송 값 | 누름 `[0x02,0,0,0,0,0,0,0]` (Left Shift) → 50 ms → 뗌 `[0,0,0,0,0,0,0,0]` |
 
@@ -143,8 +144,10 @@ Linked 상태를 따로 두는 이유는 §7(ADR-3)에 있습니다. BOOT 5초 �
 - 호스트는 **암호화된 링크**가 된 순간(`onAuthenticationComplete` + `isEncrypted()`)부터 연결된 것으로 셉니다. 핸들은 `HostSet`에 넣고, `onDisconnect`에서 뺍니다.
 - `HostSet`은 NimBLE 호스트 태스크가 쓰고 Arduino `loop()`가 읽으므로 `std::mutex`로 보호하고, 연결 수는 `std::atomic<uint8_t>`로 따로 둡니다. `isConnected()`는 `connectedCount() > 0`입니다.
 - `kMaxHosts`, `HostSet::kCapacity`, `CONFIG_BT_NIMBLE_MAX_CONNECTIONS`는 `static_assert`로 서로 묶여 있어 어긋나면 컴파일이 실패합니다.
-- 연결이 생기면 광고가 멈추므로, `onConnect`에서 raw 연결 수가 3 미만이면 광고를 다시 켭니다.
-- **광고 자가 복구**: 새 호스트와 본딩하면 NimBLE가 IRK를 컨트롤러 resolving list에 넣으면서 `ble_gap_preempt()`로 광고를 멈추고 다시 켜지 않습니다(`ble_store.c` → `ble_hs_pvcy.c`). 그래서 `loop()`가 1 s마다 `maintain()`을 불러, 자리가 남았는데 광고가 꺼져 있으면 다시 켭니다(`[ble] advertising resumed`).
+- 연결이 생기면 광고가 멈추므로, `onConnect`에서 **페어링된 호스트 수**가 3 미만이면 광고를 다시 켭니다. 3번째 호스트의 암호화가 끝나면(`onAuthenticationComplete`) 광고를 끕니다.
+- raw 연결 한도는 4로, 페어링 중인 연결 하나를 받을 여유가 있습니다. 새 연결은 `PendingLinks`에 접속 시각과 함께 기록되고, **30 s 안에 페어링하지 않으면** `maintain()`이 끊습니다. 페어링하지 않는 연결이 자리를 영구히 차지하지 못하게 하기 위함입니다.
+- **콜백에서는 Serial을 쓰지 않습니다.** NimBLE 콜백은 BLE 이벤트를 처리하는 유일한 태스크에서 돌기 때문에, USB CDC 쓰기가 막히면 BLE 전체가 멈출 수 있습니다. 콜백은 이벤트를 FreeRTOS 큐에 넣기만 하고(`xQueueSend`, 대기 0), `maintain()`이 loop 태스크에서 꺼내 출력합니다. `stateMutex`는 `HostSet`/`PendingLinks` 변경 구간에만 잡습니다.
+- **광고 자가 복구**: 새 호스트와 본딩하면 NimBLE가 IRK를 컨트롤러 resolving list에 넣으면서 `ble_gap_preempt()`로 광고를 멈추고 다시 켜지 않습니다(`ble_store.c` → `ble_hs_pvcy.c`). 그래서 `loop()`가 1 s마다 `maintain()`을 불러, 호스트 자리가 남았는데 광고가 꺼져 있으면 다시 켜고(`[ble] advertising resumed`), 3대가 찼는데 켜져 있으면 끕니다.
 - 전송은 구독(CCCD) 여부를 확인하는 `notify()`(핸들 미지정)를 사용하므로, 구독한 **모든** 호스트에 한 번에 나갑니다. 실패하면 `[ble] notify failed`를 남깁니다.
 
 ### 6.3 영속 데이터 (NVS)
@@ -160,10 +163,10 @@ Linked 상태를 따로 두는 이유는 §7(ADR-3)에 있습니다. BOOT 5초 �
 
 `ble_keyboard::clearPairings()` 순서:
 
-1. `advertiseOnDisconnect(false)`, `stopAdvertising()` — `ble_gap_unpair()`는 상대가 IRK를 배포한 경우(Apple 호스트는 항상 배포) **광고 중이면 `BLE_HS_EBUSY`로 거부**합니다(`ble_gap.c` `ble_gap_unpair`).
+1. `resetting = true`, `advertiseOnDisconnect(false)`, `stopAdvertising()` — `ble_gap_unpair()`는 상대가 IRK를 배포한 경우(Apple 호스트는 항상 배포) **광고 중이면 `BLE_HS_EBUSY`로 거부**합니다(`ble_gap.c` `ble_gap_unpair`). `resetting` 동안 `onConnect`는 새 연결을 바로 끊고 광고를 켜지 않으며, `maintain()`도 아무것도 하지 않습니다.
 2. 연결된 모든 호스트 `disconnect()`.
-3. `deleteAllBonds()` — 실패 시 20 ms 간격으로 최대 5회 재시도합니다.
-4. `advertiseOnDisconnect(true)`, `startAdvertising()`.
+3. `deleteAllBonds()` — 실패 시 50 ms 간격으로 최대 10회 재시도합니다. 매 시도 직전에 `stopAdvertising()`을 다시 호출합니다.
+4. `advertiseOnDisconnect(true)`, `resetting = false`, `startAdvertising()`.
 5. 성공하면 삭제한 본딩 수를, 실패하면 -1을 돌려줍니다. 로그는 각각 `[btn] pairing reset, k bond(s) cleared` / `[btn] pairing reset FAILED`.
 
 간격 설정(NVS `pccaffeine/interval`)은 지우지 않습니다. 호스트 쪽에도 예전 키가 남아 있으므로, 사용자는 각 호스트에서 기기를 삭제한 뒤 다시 페어링해야 합니다.
@@ -173,7 +176,7 @@ Linked 상태를 따로 두는 이유는 §7(ADR-3)에 있습니다. BOOT 5초 �
 | 접두어 | 시점 | 예 |
 |--------|------|----|
 | `[boot]` | setup 종료 | `[boot] PCCaffeine KBD, interval=1m` |
-| `[ble]` | 링크/페어링/해제, 호스트 수 변화, 광고 재개, 전송 실패 | `[ble] hosts=2/3`, `[ble] advertising resumed` |
+| `[ble]` | 링크/페어링/해제, 호스트 수 변화, 광고 재개, 30 s 미페어링 연결 끊기, 전송 실패 (콜백 이벤트는 최대 1 s 늦게 출력) | `[ble] hosts=2/3`, `[ble] link 2 did not pair within 30s, disconnecting` |
 | `[btn]` | 간격 변경, 페어링 초기화 | `[btn] interval=5m`, `[btn] pairing reset, 1 bond(s) cleared` |
 | `[fire]` | Shift 전송 | `[fire] LeftShift at 61s (interval=1m)` |
 | `[stat]` | 10 s 주기 | `[stat] hosts=1/3 adv=1 bonds=1 interval=1m remaining=0:42` |
@@ -192,25 +195,26 @@ Linked 상태를 따로 두는 이유는 §7(ADR-3)에 있습니다. BOOT 5초 �
 | ADR-7 | 파이는 픽셀 단위로 직접 계산 | U8g2에는 채워진 부채꼴 API가 없음. 37×37 영역 atan2 ≈ 1,400회/프레임은 C3에 충분히 가벼움 | 미리 계산한 비트맵 → 메모리와 복잡도 증가 |
 | ADR-8 | 최대 3대 동시 연결, 타이머는 하나 | 여러 PC를 한 장치로 깨워 두기 (사용자 결정). 칩 한도는 연결+광고 6개, NimBLE 기본 3 | 한 번에 한 대만(Easy-Switch 방식) → 이 용도에는 불편 |
 | ADR-9 | 짧게 누르기는 **뗄 때** 동작, 5초 누르기는 페어링 초기화 | 같은 버튼으로 두 기능을 구분하려면 누름 시점에 바로 실행할 수 없음 (사용자 결정) | 누름 즉시 간격 변경 → 길게 누를 때도 간격이 바뀌어 기각 |
+| ADR-11 | raw 연결 여유 1개 + 30 s 페어링 제한, 콜백 로그는 큐로 | 리뷰 지적: 페어링 안 된 연결이 자리를 막는 문제, 콜백 Serial이 BLE 태스크를 멈출 위험 (`759fa69`) | 여유 없이 3 = 3 → 미페어링 연결 2개로 광고 영구 중단 |
 | ADR-10 | 광고 상태를 1 s마다 점검해 복구 | NimBLE가 IRK 등록 때 광고를 멈추는 동작은 라이브러리 내부라 이벤트로 잡기 어려움. 주기 점검이 단순하고 원인과 무관하게 복구됨 | 광고 완료 콜백에서 재시작 → 모든 원인을 다 다루는지 보장하기 어려움 |
 
 ## 8. 자원 사용 (빌드 기준)
 
 | 항목 | 값 |
 |------|----|
-| Flash (앱) | 약 528 KB / 1,280 KB (40.2 %) |
-| RAM (정적) | 약 25.4 KB / 320 KB (7.8 %) |
+| Flash (앱) | 약 529 KB / 1,280 KB (40.3 %) |
+| RAM (정적) | 약 25.7 KB / 320 KB (7.8 %) |
 | 파티션 | 기본 (`default.csv`, app 1.25 MB ×2 + NVS) |
 
 ## 9. 검증 전략
 
 | 수준 | 방법 | 명령 / 근거 |
 |------|------|-------------|
-| 단위 테스트 | Unity, 호스트(native) 실행, 6개 스위트 42개 케이스 | `pio test -e native` |
+| 단위 테스트 | Unity, 호스트(native) 실행, 7개 스위트 49개 케이스 | `pio test -e native` |
 | 빌드 | 프로젝트 소스 경고 0 (`-Wall -Wextra`) | `pio run -e esp32c3` |
 | 정적 분석 | cppcheck, 프로젝트 소스 HIGH/MEDIUM 0 | `pio check -e esp32c3 --skip-packages` |
 | 포맷 | `.clang-format` (Google 기반, 100열) | `clang-format --dry-run --Werror` |
-| 코드 리뷰 | 독립 리뷰어, NimBLE 소스와 대조 검증 | v1.0 APPROVE (`3bf1da4`), v1.1 §9.2 |
+| 코드 리뷰 | 독립 리뷰어, NimBLE 소스와 대조 검증 | v1.0 APPROVE (`3bf1da4`), v1.1 REQUEST_CHANGES(major 3) → 수정 후 APPROVE (`759fa69`) |
 | 실기 검증 | 플래시, 페어링, 1분 fire, 버튼 순환, 재부팅 후 유지 | Plans.md Phase 3, 아래 9.1 |
 
 ### 9.1 실기 검증 결과 (2026-10-05, macOS 호스트)
@@ -243,7 +247,7 @@ Linked 상태를 따로 두는 이유는 §7(ADR-3)에 있습니다. BOOT 5초 �
 | spec 항목 | 구현 | 테스트 |
 |-----------|------|--------|
 | §3 BLE HID, 이름, 본딩, 재광고 | `ble_keyboard` | 실기 3.2 |
-| §3 다중 호스트 (최대 3대, 광고 유지) | `HostSet`, `ble_keyboard` | `test_hostset`, 실기 6.4 (1대) |
+| §3 다중 호스트 (최대 3대, 광고 유지, 30 s 페어링 제한) | `HostSet`, `PendingLinks`, `ble_keyboard` | `test_hostset`, `test_pending`, 실기 6.4 (1대) |
 | §4.1 Left Shift만 전송 | `ble_keyboard::tapLeftShift` | 코드 리뷰, 실기 3.2 |
 | §4.2 1→5→8분 순환, 리셋, NVS | `interval_cycle`, `settings`, `main.cpp` | `test_interval`, `test_countdown`, 실기 3.3 |
 | §4.3 연결 중에만 진행, 재연결 리셋 | `Countdown`, `main.cpp` | `test_countdown` |
@@ -260,6 +264,9 @@ Linked 상태를 따로 두는 이유는 §7(ADR-3)에 있습니다. BOOT 5초 �
 | R-4 | 일부 기업 보안 정책은 입력과 무관하게 화면을 잠금 | 제품 범위 밖 (매뉴얼에 안내) |
 | R-5 | 2대 이상 동시 연결은 실기 미검증 | 호스트를 더 확보하면 Plans.md 6.4 재검증 |
 | R-6 | 장치만 초기화하면 호스트에 예전 키가 남아 재연결 실패 | BLE 구조상 불가피. 매뉴얼에 "기기 삭제" 절차 안내 |
+| R-7 | 페어링하지 않는 연결이 동시에 2개 이상이면 최대 30 s 동안 광고가 막힐 수 있음 | 설계상 상한이 있는 트레이드오프 (리뷰 minor) |
+| R-8 | 연결 시도가 실패하면 NimBLE가 내부에서 광고를 켜므로, 초기화 재시도 한 번이 EBUSY로 실패할 수 있음 | 매 시도 전 `stopAdvertising()` + 10회 재시도로 흡수 (리뷰 minor) |
+| R-9 | 30 s 경계에서 막 페어링한 연결을 `maintain()`이 끊을 수 있음 | 이미 본딩돼 있어 바로 재연결됨 (리뷰 minor) |
 
 ## 11. 빌드와 도구
 
@@ -268,7 +275,7 @@ Linked 상태를 따로 두는 이유는 §7(ADR-3)에 있습니다. BOOT 5초 �
 | 플랫폼 | PlatformIO Core 6.2, `espressif32 @ ^6.9.0` (arduino-esp32 2.0.x) |
 | 보드 정의 | `esp32-c3-devkitm-1`, `ARDUINO_USB_MODE=1`, `ARDUINO_USB_CDC_ON_BOOT=1` |
 | 라이브러리 | `h2zero/NimBLE-Arduino @ ^2.5.1`, `olikraus/U8g2 @ ^2.36.18` |
-| NimBLE 설정 | `CONFIG_BT_NIMBLE_MAX_CONNECTIONS=3`, `MAX_BONDS=5`, `MAX_CCCDS=16` |
+| NimBLE 설정 | `CONFIG_BT_NIMBLE_MAX_CONNECTIONS=4`, `MAX_BONDS=5`, `MAX_CCCDS=16` |
 | 테스트 환경 | `env:native` + Unity, `-std=gnu++17 -Wall -Wextra -Werror` |
 
 ## 12. 다이어그램 관리
