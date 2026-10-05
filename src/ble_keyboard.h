@@ -23,7 +23,7 @@ bool isAdvertising();
 int bondCount();
 
 // Disconnects every host and deletes all stored pairings (spec §4.5).
-// Returns the number of bonds that were stored before the reset.
+// Returns the number of bonds cleared, or -1 if the bond store could not be cleared.
 int clearPairings();
 
 // Left Shift down -> holdMs -> release.

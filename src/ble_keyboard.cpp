@@ -143,9 +143,23 @@ int bondCount() {
 int clearPairings() {
   const int bonds = NimBLEDevice::getNumBonds();
   NimBLEServer* server = NimBLEDevice::getServer();
+
+  // ble_gap_unpair() refuses with BLE_HS_EBUSY while advertising if the peer
+  // distributed an IRK (all Apple hosts do), so keep advertising off until done.
+  server->advertiseOnDisconnect(false);
+  NimBLEDevice::stopAdvertising();
   for (uint16_t handle : server->getPeerDevices()) server->disconnect(handle);
-  if (!NimBLEDevice::deleteAllBonds()) Serial.println("[ble] deleteAllBonds failed");
-  return bonds;
+
+  bool ok = false;
+  for (int attempt = 0; attempt < 5 && !ok; ++attempt) {
+    if (attempt > 0) delay(20);
+    NimBLEDevice::stopAdvertising();
+    ok = NimBLEDevice::deleteAllBonds();
+  }
+
+  server->advertiseOnDisconnect(true);
+  NimBLEDevice::startAdvertising();
+  return ok ? bonds : -1;
 }
 
 void tapLeftShift(uint32_t holdMs) {

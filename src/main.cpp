@@ -50,7 +50,11 @@ void startFlash(uint32_t now) {
 void onPairingReset(uint32_t now) {
   const int cleared = ble_keyboard::clearPairings();
   startFlash(now);
-  Serial.printf("[btn] pairing reset, %d bond(s) cleared\n", cleared);
+  if (cleared < 0) {
+    Serial.println("[btn] pairing reset FAILED");
+  } else {
+    Serial.printf("[btn] pairing reset, %d bond(s) cleared\n", cleared);
+  }
 }
 
 void onConnectionChanged(bool connected) {
