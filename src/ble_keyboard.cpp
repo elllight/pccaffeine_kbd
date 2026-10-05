@@ -136,6 +136,18 @@ bool isAdvertising() {
   return NimBLEDevice::getAdvertising()->isAdvertising();
 }
 
+int bondCount() {
+  return NimBLEDevice::getNumBonds();
+}
+
+int clearPairings() {
+  const int bonds = NimBLEDevice::getNumBonds();
+  NimBLEServer* server = NimBLEDevice::getServer();
+  for (uint16_t handle : server->getPeerDevices()) server->disconnect(handle);
+  if (!NimBLEDevice::deleteAllBonds()) Serial.println("[ble] deleteAllBonds failed");
+  return bonds;
+}
+
 void tapLeftShift(uint32_t holdMs) {
   if (!isConnected()) return;
   sendReport(kModLeftShift);

@@ -66,12 +66,22 @@ Purpose: 최대 3대 PC 동시 연결, 화면에 현재/최대 연결 수 표시
 
 | Task | 内容 | DoD | Depends | Status |
 |------|------|-----|---------|--------|
-| 6.1 | `[Feature]` `[lane:gate]` `[tdd:required]` core `HostSet`(최대 3, 핸들 추가/제거, 중복 무시, 가득 참 판정) + `view::formatLinkLabel(n,max)` → `BT n/3` | native tests: add/remove/dup/overflow/unknown-remove, 라벨 `BT 0/3`·`BT 3/3`; `pio test -e native` PASS | - | cc:TODO |
-| 6.2 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `ble_keyboard`: 암호화 링크를 HostSet으로 추적, `connectedCount()` 제공, 3대 미만이면 연결 후에도 광고 재개; build flags MAX_CONNECTIONS=3, MAX_BONDS=5, MAX_CCCDS=16 | `pio run -e esp32c3` 경고 0 | 6.1 | cc:TODO |
-| 6.3 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` main/screen: 상단 `BT n/3`(n=0이면 깜빡임), 연결 수 변화 로그 `[ble] hosts=n/3`, `[stat]`에 `hosts=n/3 adv=0/1` | `pio run` 경고 0, `pio check` HIGH 0, clang-format OK | 6.2 | cc:TODO |
-| 6.4 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` 실기: 1대 연결 시 `BT 1/3` 표시와 `adv=1` 유지, Shift 수신(HIDIdleTime 리셋). 2대 이상 동시 연결은 PC가 추가로 있을 때만 | 시리얼 로그 + 사용자 육안; 다중 PC 미검증 시 `unknown`으로 보고 | 6.3 | cc:TODO |
-| 6.5 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` user-manual(여러 PC 연결 절, 화면 `BT n/3`), sads(ADR-8, R-3 해소, 인터페이스), README, 다이어그램 재생성 | 문서 링크 유효, SVG 재내보내기 exit 0 | 6.3 | cc:TODO |
-| 6.6 | `[Review]` `[lane:gate]` `[tdd:skip:review]` 독립 리뷰 (HostSet 스레드 안전성, 광고 재개 로직) | verdict APPROVE 또는 지적 사항 반영 | 6.3 | cc:TODO |
+| 6.1 | `[Feature]` `[lane:gate]` `[tdd:required]` core `HostSet`(최대 3, 핸들 추가/제거, 중복 무시, 가득 참 판정) + `view::formatLinkLabel(n,max)` → `BT n/3` | native tests: add/remove/dup/overflow/unknown-remove, 라벨 `BT 0/3`·`BT 3/3`; `pio test -e native` PASS | - | cc:完了 [616f69e] |
+| 6.2 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `ble_keyboard`: 암호화 링크를 HostSet으로 추적, `connectedCount()` 제공, 3대 미만이면 연결 후에도 광고 재개; build flags MAX_CONNECTIONS=3, MAX_BONDS=5, MAX_CCCDS=16 | `pio run -e esp32c3` 경고 0 | 6.1 | cc:完了 [616f69e] |
+| 6.3 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` main/screen: 상단 `BT n/3`(n=0이면 깜빡임), 연결 수 변화 로그 `[ble] hosts=n/3`, `[stat]`에 `hosts=n/3 adv=0/1` | `pio run` 경고 0, `pio check` HIGH 0, clang-format OK | 6.2 | cc:完了 [616f69e] |
+| 6.4 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` 실기: 1대 연결 시 `BT 1/3` 표시와 `adv=1` 유지, Shift 수신(HIDIdleTime 리셋). 2대 이상 동시 연결은 PC가 추가로 있을 때만 | 시리얼 로그 + 사용자 육안; 다중 PC 미검증 시 `unknown`으로 보고 | 6.3 | cc:完了 [616f69e] (1대 실측 OK: BT 1/3, adv=1 BLE 스캔 확인, 58회 fire ≈60 s; 2대 이상 동시 연결 unknown) |
+| 6.5 | `[Docs]` `[lane:fast]` `[tdd:skip:docs-only]` user-manual(여러 PC 연결 절, 화면 `BT n/3`, 페어링 초기화 절), sads(ADR-8, R-3 해소, 인터페이스), README, 다이어그램 재생성 | 문서 링크 유효, SVG 재내보내기 exit 0 | 6.3, 7.2 | cc:TODO |
+| 6.6 | `[Review]` `[lane:gate]` `[tdd:skip:review]` 독립 리뷰 (HostSet 스레드 안전성, 광고 재개 로직, 페어링 초기화) | verdict APPROVE 또는 지적 사항 반영 | 6.3, 7.2 | cc:TODO |
+
+## Phase 7: Pairing reset by long press (2026-10-05 user request)
+
+Purpose: PC 없이 보드에서 모든 페어링 초기화 (spec §4.5)
+
+| Task | 内容 | DoD | Depends | Status |
+|------|------|-----|---------|--------|
+| 7.1 | `[Feature]` `[lane:gate]` `[tdd:required]` core `ButtonGesture`: short(<1 s, on release) / cancel(1–5 s) / long(≥5 s, 1회, 누른 채 발생) + 남은 초 계산 | native tests: short/cancel/long/long-후-release 무동작/경계값(999·1000·4999·5000 ms)/millis wrap; PASS | - | cc:TODO |
+| 7.2 | `[Feature]` `[lane:gate]` `[tdd:skip:hardware-io]` `ble_keyboard::clearPairings()` (모든 연결 끊기 + deleteAllBonds), main: gesture 연결, 화면 `RST n`, 로그 `[btn] pairing reset` | `pio run` 경고 0, `pio check` HIGH 0 | 7.1, 6.3 | cc:TODO |
+| 7.3 | `[Verify]` `[lane:gate]` `[tdd:skip:manual-hw]` 실기: 짧게 누르기 간격 변경, 5초 누르기 → Mac 연결 해제·`hosts=0/3`, Mac에서 기기 삭제 후 재페어링 성공 | 시리얼 로그 + 사용자 확인 | 7.2 | cc:TODO |
 
 ## 事前確認
 - 事項: PlatformIO 패키지/툴체인 다운로드 (registry.platformio.org, dl.espressif.com) — 외부 수신만, 송신 없음

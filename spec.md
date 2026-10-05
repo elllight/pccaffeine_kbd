@@ -42,7 +42,7 @@ Pin numbers are the common values for this board; they are verified on real hard
 
 ### 4.2 Intervals
 - Allowed intervals cycle: **1 min → 5 min → 8 min → 1 min …**
-- Short press of BOOT button advances to the next interval.
+- Short press of BOOT button (see §4.5) advances to the next interval.
 - On interval change the countdown **resets immediately** to the full new interval.
 - Selected interval is **persisted in NVS** and restored at boot. Invalid/missing stored value → 1 min.
 - Factory default (first boot): 1 min.
@@ -65,7 +65,13 @@ Pin numbers are the common values for this board; they are verified on real hard
 - While disconnected: pie shown empty/outline and text shows waiting state.
 
 ### 4.5 Button
-- Debounced (≥ 30 ms). One action per press (on press edge).
+- Debounced (≥ 30 ms). Gestures on the BOOT button:
+  - **Short press** (released before 1 s): next interval (§4.2). Acts on **release**.
+  - **Hold 1–5 s then release**: cancelled, no action.
+  - **Hold 5 s**: **clear all pairings** — delete every stored bond and disconnect all hosts.
+    Fires once while still held; releasing afterwards does nothing. Interval setting is kept.
+  - While held ≥ 1 s the top line shows `RST n` (seconds left until the reset).
+- Hosts must also "forget" PCCaffeine on their side before pairing again.
 - Holding the button during power-on enters ROM download mode (ESP32-C3 hardware behaviour; not a bug).
 
 ## 5. Non-goals

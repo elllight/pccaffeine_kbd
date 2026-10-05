@@ -46,7 +46,10 @@ void draw(const State& s) {
 
   // Link state "BT n/max", blinking while no host is connected
   u8g2.setFont(u8g2_font_5x7_tr);
-  if (s.connected || s.blinkOn) {
+  if (s.resetSeconds > 0) {
+    snprintf(buf, sizeof(buf), "RST %u", static_cast<unsigned>(s.resetSeconds));
+    u8g2.drawStr(kTextX, 0, buf);
+  } else if (s.connected || s.blinkOn) {
     view::formatLinkLabel(s.hostCount, s.maxHosts, buf, sizeof(buf));
     u8g2.drawStr(kTextX, 0, buf);
   }

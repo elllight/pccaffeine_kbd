@@ -9,6 +9,7 @@ struct State {
   bool connected;     // at least one host (countdown running)
   uint8_t hostCount;  // connected hosts
   uint8_t maxHosts;
+  uint8_t resetSeconds;     // > 0 while BOOT is held: seconds until pairing reset
   bool blinkOn;             // toggles while waiting for a host
   float remainingFraction;  // 0..1
   uint32_t remainingMs;

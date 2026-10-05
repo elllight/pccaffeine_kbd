@@ -19,6 +19,13 @@ bool isConnected();
 // True while advertising (accepting another host).
 bool isAdvertising();
 
+// Number of hosts whose pairing keys are stored in NVS.
+int bondCount();
+
+// Disconnects every host and deletes all stored pairings (spec §4.5).
+// Returns the number of bonds that were stored before the reset.
+int clearPairings();
+
 // Left Shift down -> holdMs -> release.
 void tapLeftShift(uint32_t holdMs = 50);
 
