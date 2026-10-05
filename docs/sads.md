@@ -6,7 +6,7 @@
 | 작성일 | 2026-10-05 |
 | 대상 펌웨어 | `pccaffeine_kbd` (PlatformIO, env `esp32c3`) |
 | 상위 문서 | [spec.md](../spec.md) — 제품 요구사항 SSOT |
-| 사용자 문서 | [user-manual.md](user-manual.md) |
+| 사용자 문서 | [user-manual.md](user-manual.md) / [English](user-manual.en.md) |
 
 ---
 
@@ -282,4 +282,5 @@ Linked 상태를 따로 두는 이유는 §7(ADR-3)에 있습니다. BOOT 5초 �
 
 - 원본: `docs/diagrams/*.drawio` (draw.io에서 직접 편집 가능)
 - 생성 스크립트: `tools/gen_diagrams.py`가 원본을 생성합니다. 스크립트를 고치거나 `.drawio`를 직접 편집하세요. 직접 편집했다면 스크립트를 다시 실행하지 마세요(덮어씀).
+- 영어판: README·매뉴얼에 쓰는 10개는 `<이름>.en.drawio/.svg`도 생성합니다. 문구는 `tools/diagram_i18n_en.json`(한국어 문구 → 영어) 표로 번역하며, 표에 없는 한국어 문구가 있으면 생성 스크립트가 실패합니다.
 - SVG 내보내기: `tools/export_diagrams.sh` (draw.io 데스크톱 CLI 필요, macOS: `brew install --cask drawio`)

@@ -22,4 +22,4 @@ Product contract: `spec.md` (SSOT). Task ledger: `Plans.md`.
 - ESP32-C3 has no USB OTG: USB HID is not an option.
 - Max hosts is tied together by static_asserts (`kMaxHosts`, `HostSet::kCapacity`, `CONFIG_BT_NIMBLE_MAX_CONNECTIONS`).
 - macOS: after upload, replug USB to boot (RTS/DTR reset can leave the chip in download mode).
-- When behaviour changes, update `spec.md` first, then `docs/sads.md`, `docs/user-manual.md`, README and diagrams.
+- When behaviour changes, update `spec.md` first, then `docs/sads.md`, both manuals (`docs/user-manual.md`, `docs/user-manual.en.md`), both READMEs (`README.md` English, `README.ko.md` Korean) and diagrams (add English labels to `tools/diagram_i18n_en.json`).

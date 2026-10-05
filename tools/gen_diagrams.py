@@ -5,10 +5,34 @@ The .drawio files are the editable originals; SVGs are exported from them with
 the draw.io CLI (see tools/export_diagrams.sh). Edit this script or the .drawio
 files directly, then re-export.
 """
+import json
+import re
+import sys
 from html import escape
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parent.parent / "docs" / "diagrams"
+I18N_EN = Path(__file__).resolve().parent / "diagram_i18n_en.json"
+HANGUL = re.compile("[\uac00-\ud7a3]")
+
+# Diagrams shown in README / user manual get an English variant (<name>.en.drawio).
+# The SADS-only ones (hardware-block, main-loop, fire-sequence) stay Korean.
+EN_DIAGRAMS = {"screen-guide", "screen-states", "button-cycle", "pairing-steps", "board-overview",
+               "multi-host", "button-gestures", "system-context", "software-architecture",
+               "state-machine"}
+LANG = "ko"
+EN = {}
+MISSING = set()
+
+
+def t(value):
+    """Translates a label when generating English diagrams (exact-match table)."""
+    if LANG != "en" or not HANGUL.search(value):
+        return value
+    if value not in EN:
+        MISSING.add(value)
+        return value
+    return EN[value]
 
 FONT = "fontFamily=Helvetica;fontSize=13;"
 BOX = "rounded=1;whiteSpace=wrap;html=1;arcSize=8;" + FONT
@@ -40,7 +64,7 @@ class Diagram:
     def box(self, value, x, y, w, h, style=BOX):
         cid = self._id()
         self.cells.append(
-            f'<mxCell id="{cid}" value="{escape(value)}" style="{style}" vertex="1" parent="1">'
+            f'<mxCell id="{cid}" value="{escape(t(value))}" style="{style}" vertex="1" parent="1">'
             f'<mxGeometry x="{x}" y="{y}" width="{w}" height="{h}" as="geometry"/></mxCell>')
         return cid
 
@@ -49,7 +73,7 @@ class Diagram:
         pts = "".join(f'<mxPoint x="{px}" y="{py}"/>' for px, py in points)
         pts = f'<Array as="points">{pts}</Array>' if pts else ""
         self.cells.append(
-            f'<mxCell id="{cid}" value="{escape(value)}" style="{style}" edge="1" parent="1" '
+            f'<mxCell id="{cid}" value="{escape(t(value))}" style="{style}" edge="1" parent="1" '
             f'source="{src}" target="{tgt}"><mxGeometry relative="1" as="geometry">{pts}</mxGeometry></mxCell>')
         return cid
 
@@ -61,7 +85,8 @@ class Diagram:
                f'pageWidth="{self.width}" pageHeight="{self.height}" background="#ffffff" math="0" shadow="0">'
                f'<root><mxCell id="0"/><mxCell id="1" parent="0"/>{body}</root>'
                f'</mxGraphModel></diagram></mxfile>\n')
-        (OUT / f"{self.name}.drawio").write_text(xml, encoding="utf-8")
+        suffix = ".en" if LANG == "en" else ""
+        (OUT / f"{self.name}{suffix}.drawio").write_text(xml, encoding="utf-8")
 
 
 # ---------------------------------------------------------------- OLED mock-up
@@ -381,11 +406,21 @@ def fire_sequence():
     d.write()
 
 
+ALL = (screen_guide, screen_states, button_cycle, pairing_steps, board_overview, multi_host,
+       button_gestures, system_context, hardware_block, software_architecture, state_machine,
+       main_loop, fire_sequence)
+
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    for fn in (screen_guide, screen_states, button_cycle, pairing_steps, board_overview,
-               multi_host, button_gestures,
-               system_context, hardware_block, software_architecture, state_machine,
-               main_loop, fire_sequence):
+    for fn in ALL:
         fn()
+    LANG = "en"
+    EN.update(json.loads(I18N_EN.read_text(encoding="utf-8")) if I18N_EN.exists() else {})
+    for fn in ALL:
+        if fn.__name__.replace("_", "-") in EN_DIAGRAMS:
+            fn()
+    if MISSING:
+        print("missing English labels:", file=sys.stderr)
+        print(json.dumps(sorted(MISSING), ensure_ascii=False, indent=1), file=sys.stderr)
+        sys.exit(1)
     print("\n".join(sorted(p.name for p in OUT.glob("*.drawio"))))

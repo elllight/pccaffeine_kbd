@@ -1,3 +1,5 @@
+[English](user-manual.en.md) | **한국어**
+
 # PCCaffeine 사용 매뉴얼
 
 PC 화면보호기나 자동 잠금이 켜지지 않도록 **정해진 시간마다 Shift 키를 한 번 눌러 주는 작은 블루투스 키보드**입니다.
